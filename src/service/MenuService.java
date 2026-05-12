@@ -12,17 +12,13 @@ import java.util.Scanner;
 
 public class MenuService {
 
+    private final CidadeDAO cidadeDAO = new CidadeDAO();
+    private final ColetaDAO coletaDAO = new ColetaDAO();
     private static final String MSG_ID_CIDADE = "Digite o ID da cidade: ";
-
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // =========================
     // CASE 1
-    // =========================
     public void cadastrarColeta(Scanner sc) {
-
-        CidadeDAO cidadeDAO = new CidadeDAO();
-        ColetaDAO coletaDAO = new ColetaDAO();
 
         List<Cidade> cidades = cidadeDAO.listar();
 
@@ -58,11 +54,8 @@ public class MenuService {
         System.out.println("Coleta cadastrada!");
     }
 
-    // =========================
     // CASE 2
-    // =========================
     public void atualizarColeta(Scanner sc) {
-
         CidadeDAO cidadeDAO = new CidadeDAO();
         ColetaDAO coletaDAO = new ColetaDAO();
 
@@ -74,36 +67,33 @@ public class MenuService {
         );
 
         System.out.print(MSG_ID_CIDADE);
-        int cidadeId = sc.nextInt();
+        int cidadeId = sc.nextInt(); // <-- essa linha precisa estar aqui
 
         List<Coleta> coletas = coletaDAO.listarPorCidade(cidadeId);
 
         System.out.println("\n=== COLETAS ===");
-        for (Coleta c : coletas) {
+        for (int i = 0; i < coletas.size(); i++) {
+            Coleta c = coletas.get(i);
             System.out.println(
-                    "ID: " + c.getId() +
+                    "#" + (i + 1) +
                             " | " + c.getDataColeta().format(formatter) +
                             " | Casos: " + c.getCasos() +
                             " | Óbitos: " + c.getObitos()
             );
         }
 
-        System.out.print("Digite o ID da coleta: ");
-        int id = sc.nextInt();
+        System.out.print("Digite o número da coleta (#): ");
+        int numero = sc.nextInt();
 
-        Coleta coleta = coletas.stream()
-                .filter(c -> c.getId() == id)
-                .findFirst()
-                .orElse(null);
-
-        if (coleta == null) {
-            System.out.println("Coleta não encontrada!");
+        if (numero < 1 || numero > coletas.size()) {
+            System.out.println("Número inválido!");
             return;
         }
 
+        Coleta coleta = coletas.get(numero - 1);
+
         System.out.print("Novos casos: ");
         int casos = sc.nextInt();
-
         System.out.print("Novos óbitos: ");
         int obitos = sc.nextInt();
 
@@ -115,16 +105,12 @@ public class MenuService {
                 coleta.getCidade()
         ));
 
-        System.out.println("Coleta atualizada!");;
+        System.out.println("Coleta atualizada!");
     }
 
-    // =========================
-    // CASE 3
-    // =========================
-    public void relatorioCidade(Scanner sc) {
 
-        CidadeDAO cidadeDAO = new CidadeDAO();
-        ColetaDAO coletaDAO = new ColetaDAO();
+    // CASE 3
+    public void relatorioCidade(Scanner sc) {
 
         List<Cidade> cidades = cidadeDAO.listar();
 
@@ -150,7 +136,9 @@ public class MenuService {
         System.out.print("Quantas coletas deseja visualizar? ");
         int qtd = sc.nextInt();
 
-        int total = 0;
+        int totalCasos = 0;
+        int totalObitos = 0;
+
         System.out.println("\n=== RELATÓRIO ===");
 
         for (int i = 0; i < Math.min(qtd, coletas.size()); i++) {
@@ -162,22 +150,21 @@ public class MenuService {
                             " | Óbitos: " + c.getObitos()
             );
 
-            total += c.getCasos();
+            totalCasos += c.getCasos();
+            totalObitos += c.getObitos();
         }
 
-        double percentual = (double) total / cidade.getPopulacao() * 100;
+        double percentualCasos = (double) totalCasos / cidade.getPopulacao() * 100;
+        double percentualObito = (double) totalObitos / cidade.getPopulacao() * 100;
 
-        System.out.println("Total de casos: " + total);
-        System.out.printf("Percentual da população: %.6f%%\n", percentual);
+        System.out.println("Total de casos: " + totalCasos);
+        System.out.println("Total de óbitos: " + totalObitos);
+        System.out.printf("Percentual da população infectada: %.6f%%\n", percentualCasos);
+        System.out.printf("Percentual da população falecida: %.6f%%\n", percentualObito);
     }
 
-    // =========================
     // CASE 4
-    // =========================
     public void compararCidades(Scanner sc) {
-
-        CidadeDAO cidadeDAO = new CidadeDAO();
-        ColetaDAO coletaDAO = new ColetaDAO();
 
         List<Cidade> cidades = cidadeDAO.listar();
 
@@ -185,33 +172,29 @@ public class MenuService {
                 System.out.println(c.getId() + " - " + c.getNome())
         );
 
-        System.out.print("ID cidade 1: ");
+        System.out.print("ID da primeira cidade: ");
         int id1 = sc.nextInt();
 
-        System.out.print("ID cidade 2: ");
+        System.out.print("ID da segunda cidade: ");
         int id2 = sc.nextInt();
 
         int total1 = coletaDAO.listarPorCidade(id1).stream().mapToInt(Coleta::getCasos).sum();
         int total2 = coletaDAO.listarPorCidade(id2).stream().mapToInt(Coleta::getCasos).sum();
 
         System.out.println("\n=== COMPARAÇÃO ===");
-        System.out.println("Cidade 1: " + total1);
-        System.out.println("Cidade 2: " + total2);
-        System.out.println("Diferença: " + Math.abs(total1 - total2));
+        Cidade cidade1 = cidades.stream().filter(c -> c.getId() == id1).findFirst().orElse(null);
+        Cidade cidade2 = cidades.stream().filter(c -> c.getId() == id2).findFirst().orElse(null);
+        System.out.println(cidade1.getNome() + ": " + total1 + " casos");
+        System.out.println(cidade2.getNome() + ": " + total2 + " casos");
+        System.out.println("Diferença: " + Math.abs(total1 - total2) + "casos");
     }
 
-    // =========================
     // CASE 5
-    // =========================
     public void relatorioGeral(Scanner sc) {
-
-        CidadeDAO cidadeDAO = new CidadeDAO();
-        ColetaDAO coletaDAO = new ColetaDAO();
 
         LocalDate inicio = null;
         LocalDate fim = null;
 
-        // leitura e validação
         while (true) {
             try {
                 System.out.print("Data inicial (dd/MM/yyyy): ");
@@ -233,7 +216,6 @@ public class MenuService {
             }
         }
 
-        // resolve lambda (variáveis efetivamente finais)
         final LocalDate inicioFinal = inicio;
         final LocalDate fimFinal = fim;
 

@@ -10,9 +10,8 @@ import java.util.List;
 
 public class ColetaDAO {
 
-    // INSERT
+    // ── INSERT ────────────────────────────────────────────────────────────────
     public void inserir(Coleta coleta) {
-
         String sql = "INSERT INTO coleta (cidade_id, data_coleta, casos, obitos) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = ConnectionFactory.getConnection();
@@ -22,20 +21,17 @@ public class ColetaDAO {
             stmt.setDate(2, Date.valueOf(coleta.getDataColeta()));
             stmt.setInt(3, coleta.getCasos());
             stmt.setInt(4, coleta.getObitos());
-
             stmt.execute();
 
         } catch (SQLException e) {
             throw new DaoException(
-                    "Erro ao inserir coleta para cidade ID: " + coleta.getCidade().getId(),
-                    e
+                    "Erro ao inserir coleta para cidade ID: " + coleta.getCidade().getId(), e
             );
         }
     }
 
-    // SELECT
+    // ── SELECT ────────────────────────────────────────────────────────────────
     public List<Coleta> listarPorCidade(int cidadeId) {
-
         List<Coleta> lista = new ArrayList<>();
 
         String sql =
@@ -51,55 +47,69 @@ public class ColetaDAO {
 
             stmt.setInt(1, cidadeId);
 
-            ResultSet rs = stmt.executeQuery();
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Cidade cidade = new Cidade(
+                            cidadeId,
+                            rs.getString("nome"),
+                            rs.getInt("populacao")
+                    );
 
-            while (rs.next()) {
+                    Coleta coleta = new Coleta(
+                            rs.getInt("id"),
+                            rs.getDate("data_coleta").toLocalDate(),
+                            rs.getInt("casos"),
+                            rs.getInt("obitos"),
+                            cidade
+                    );
 
-                Cidade cidade = new Cidade(
-                        cidadeId,
-                        rs.getString("nome"),
-                        rs.getInt("populacao")
-                );
-
-                Coleta coleta = new Coleta(
-                        rs.getInt("id"),
-                        rs.getDate("data_coleta").toLocalDate(),
-                        rs.getInt("casos"),
-                        rs.getInt("obitos"),
-                        cidade
-                );
-
-                lista.add(coleta);
+                    lista.add(coleta);
+                }
             }
 
         } catch (SQLException e) {
             throw new DaoException(
-                    "Erro ao listar coletas da cidade (ID: " + cidadeId + ")",
-                    e
+                    "Erro ao listar coletas da cidade (ID: " + cidadeId + ")", e
             );
         }
 
         return lista;
     }
 
-    // UPDATE
+    // ── UPDATE ────────────────────────────────────────────────────────────────
+    // Atualiza data, casos e óbitos (a tela de edição permite alterar os três)
     public void atualizar(Coleta coleta) {
-
-        String sql = "UPDATE coleta SET casos = ?, obitos = ? WHERE id = ?";
+        String sql = "UPDATE coleta SET data_coleta = ?, casos = ?, obitos = ? WHERE id = ?";
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setInt(1, coleta.getCasos());
-            stmt.setInt(2, coleta.getObitos());
-            stmt.setInt(3, coleta.getId());
-
+            stmt.setDate(1, Date.valueOf(coleta.getDataColeta()));
+            stmt.setInt(2, coleta.getCasos());
+            stmt.setInt(3, coleta.getObitos());
+            stmt.setInt(4, coleta.getId());
             stmt.executeUpdate();
 
         } catch (SQLException e) {
             throw new DaoException(
-                    "Erro ao atualizar coleta (ID: " + coleta.getId() + ")",
-                    e
+                    "Erro ao atualizar coleta (ID: " + coleta.getId() + ")", e
+            );
+        }
+    }
+
+    // ── DELETE ────────────────────────────────────────────────────────────────
+    public void deletar(int id) {
+        String sql = "DELETE FROM coleta WHERE id = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new DaoException(
+                    "Erro ao deletar coleta (ID: " + id + ")", e
             );
         }
     }
